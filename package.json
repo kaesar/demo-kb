@@ -1,0 +1,43 @@
+{
+  "name": "demo-kb",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc --noEmit",
+    "watch": "tsc -w --noEmit",
+    "test": "jest",
+    "smoke": "node scripts/smoke.mjs",
+    "ingest": "node scripts/ingest.mjs",
+    "seed": "node scripts/seed-docs.mjs",
+    "cdk": "cd cdk && cdk",
+    "synth": "cd cdk && cdk synth KbStack",
+    "deploy:kb:dev": "cd cdk && cdk deploy KbStack --require-approval never",
+    "destroy:kb:dev": "cd cdk && cdk destroy KbStack --force"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.15.0",
+    "@swc/jest": "^0.2.39",
+    "@types/aws-lambda": "^8.10.145",
+    "@types/aws4": "^1.11.6",
+    "@types/jest": "^30",
+    "@types/node": "^24.10.1",
+    "aws-cdk": "2.1144.0",
+    "esbuild": "^0.28.2",
+    "jest": "^30",
+    "tsx": "^4.23.0",
+    "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-agent": "^3.879.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.879.0",
+    "@aws-sdk/client-cloudformation": "^3.879.0",
+    "@aws-sdk/client-opensearchserverless": "^3.879.0",
+    "@aws-sdk/client-s3": "^3.879.0",
+    "aws-cdk-lib": "^2.271.0",
+    "aws4": "^1.11.0",
+    "constructs": "^10.5.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
