@@ -2,7 +2,8 @@
 
 ## Costos (demo)
 
-* OpenSearch Serverless cobra OCU/hora aunque no consultes (~colección VECTORSEARCH siempre activa). Destruye al terminar: `npm run destroy:kb:dev`.
+* **Default `s3-vectors`:** centavos/mes (GB + operaciones, sin mínimos). Es el default por esto.
+* **Alterno `aoss` (`-c vectorStore=aoss`):** OpenSearch Serverless cobra OCU/hora aunque no consultes (~1 OCU mínimo con `standbyReplicas: DISABLED` ≈ $175/mes). Destruye al terminar: `npm run destroy:kb:dev`.
 * Embeddings Titan v2 / Cohere por tokens ingeridos; Nova Micro por `retrieve-and-generate` (barato).
 * S3 docs insignificante. Sin VPC ni NAT.
 
