@@ -118,45 +118,29 @@ export class KbStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Rol IAM para Bedrock (confianza solo bedrock.amazonaws.com + SourceAccount)
+    // --- Permisos comunes del rol KB: docs S3 + embeddings ---
     const kbRole = new iam.Role(this, 'KbRole', {
-      roleName: undefined, // nombre generado: evita choques entre cuentas/entornos
-      assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
+      roleName: undefined,
+      assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com').withConditions({
+        StringEquals: { 'aws:SourceAccount': this.account },
+      }),
       description: 'Rol para Bedrock KnowledgeBase: S3 + embeddings + vector store',
     });
-    // Endurece trust con SourceAccount (equivale al sed del script CLI)
-    const defaultPolicy = kbRole.assumeRolePolicy;
-    if (defaultPolicy) {
-      // Nota: CDK ya pone bedrock.amazonaws.com; añadimos condición vía CfnRole si hay account conocido
-      const cfnRole = kbRole.node.defaultChild as iam.CfnRole;
-      if (cfnRole && !cdk.Token.isUnresolved(this.account)) {
-        cfnRole.assumeRolePolicyDocument = {
-          Version: '2012-10-17',
-          Statement: [
-            {
-              Effect: 'Allow',
-              Principal: { Service: 'bedrock.amazonaws.com' },
-              Action: 'sts:AssumeRole',
-              Condition: { StringEquals: { 'aws:SourceAccount': this.account } },
-            },
-          ],
-        };
-      }
-    }
 
-    // --- Permisos comunes del rol KB: docs S3 + embeddings ---
-    kbRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:GetObject', 's3:ListBucket'],
-        resources: [docsBucket.bucketArn, `${docsBucket.bucketArn}/*`],
-      }),
-    );
-    kbRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['bedrock:InvokeModel'],
-        resources: [embeddingModelArn],
-      }),
-    );
+    // Policy común: S3 docs + bedrock:InvokeModel
+    new iam.Policy(this, 'KbCommonPolicy', {
+      roles: [kbRole],
+      statements: [
+        new iam.PolicyStatement({
+          actions: ['s3:GetObject', 's3:ListBucket'],
+          resources: [docsBucket.bucketArn, `${docsBucket.bucketArn}/*`],
+        }),
+        new iam.PolicyStatement({
+          actions: ['bedrock:InvokeModel'],
+          resources: [embeddingModelArn],
+        }),
+      ],
+    });
 
     // --- Vector store (ramas excluyentes) ---
     let storageConfiguration: bedrock.CfnKnowledgeBase.StorageConfigurationProperty;
@@ -185,25 +169,26 @@ export class KbStack extends cdk.Stack {
       const bucketArn = vectorBucket.attrVectorBucketArn;
 
       // Identidad: lo que la doc Bedrock exige al service role con S3 Vectors.
-      kbRole.addToPolicy(
-        new iam.PolicyStatement({
-          actions: [
-            's3vectors:PutVectors',
-            's3vectors:GetVectors',
-            's3vectors:DeleteVectors',
-            's3vectors:QueryVectors',
-            's3vectors:GetIndex',
-            's3vectors:ListVectors',
-          ],
-          resources: [indexArn],
-        }),
-      );
-      kbRole.addToPolicy(
-        new iam.PolicyStatement({
-          actions: ['s3vectors:GetVectorBucket', 's3vectors:ListIndexes'],
-          resources: [bucketArn],
-        }),
-      );
+      new iam.Policy(this, 'KbS3VectorsPolicy', {
+        roles: [kbRole],
+        statements: [
+          new iam.PolicyStatement({
+            actions: [
+              's3vectors:PutVectors',
+              's3vectors:GetVectors',
+              's3vectors:DeleteVectors',
+              's3vectors:QueryVectors',
+              's3vectors:GetIndex',
+              's3vectors:ListVectors',
+            ],
+            resources: [indexArn],
+          }),
+          new iam.PolicyStatement({
+            actions: ['s3vectors:GetVectorBucket', 's3vectors:ListIndexes'],
+            resources: [bucketArn],
+          }),
+        ],
+      });
 
       // Recurso: el bucket solo confía en el rol KB (doc Bedrock).
       new s3vectors.CfnVectorBucketPolicy(this, 'VectorBucketPolicy', {
@@ -337,13 +322,15 @@ export class KbStack extends cdk.Stack {
       vectorIndex.node.addDependency(collection);
       vectorIndex.node.addDependency(dataPolicy);
 
-      kbRole.addToPolicy(
-        new iam.PolicyStatement({
-          // La doc AOSS exige ambos para el data-plane (sin DashboardsAccessAll hay 403).
-          actions: ['aoss:APIAccessAll', 'aoss:DashboardsAccessAll'],
-          resources: [collection.attrArn],
-        }),
-      );
+      new iam.Policy(this, 'KbAossPolicy', {
+        roles: [kbRole],
+        statements: [
+          new iam.PolicyStatement({
+            actions: ['aoss:APIAccessAll', 'aoss:DashboardsAccessAll'],
+            resources: [collection.attrArn],
+          }),
+        ],
+      });
 
       storageConfiguration = {
         type: 'OPENSEARCH_SERVERLESS',

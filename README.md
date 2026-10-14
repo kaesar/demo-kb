@@ -1,7 +1,8 @@
-# Demo-KB: Bedrock Knowledge Base + S3 + Vector Store (CDK)
+# Bedrock Knowledge Base + S3 + Vector Store
 
-IaC companion piece to `demo-cx`: RAG knowledge base
-`Docs (S3 docs/) → Bedrock KB → Titan/Cohere embeddings → vector store`.
+Demo with **CDK** companion piece to [`demo-cx`](https://github.com/kaesar/demo-cx) for **RAG** and knowledge base using:
+
+> `Docs (S3 docs/) –> Bedrock KB –> Titan/Cohere embeddings –> vector store`.
 
 * Single `KbStack`, fixed region `us-east-1`, KB name `kb-bedrock`.
 * Vector store enum `KbVectorStore`: `s3-vectors` (**default**, pennies/month, no OCUs, no custom resources) or `aoss` (OpenSearch Serverless VECTORSEARCH + `knn_vector 1024`, ~$175/month minimum). Switch with `-c vectorStore=aoss`.
@@ -23,7 +24,7 @@ flowchart LR
     Lex["Future KbLexStack<br/>(Lex + Connect)"] -- "RetrieveAndGenerate<br/>(-c kbId=...)" --> KB
 ```
 
-Flow: `docs/ (S3)` → ingestion (`300/20 chunking` + embeddings) → vectors in `kb-bedrock-index` → `retrieve` / `retrieve-and-generate` (Nova Micro). With AOSS, the `VectorIndex` Lambda creates the `knn_vector` index (CFN has no L1 for indexes) with a stabilization wait for Bedrock validation.
+Flow: `docs/ (S3)` for ingestion (`300/20 chunking` + embeddings), vectors in `kb-bedrock-index`, `retrieve` / `retrieve-and-generate` (Nova Micro). With AOSS, the `VectorIndex` Lambda creates the `knn_vector` index (CFN has no L1 for indexes) with a stabilization wait for Bedrock validation.
 
 ## Structure
 
@@ -46,8 +47,8 @@ Flow: `docs/ (S3)` → ingestion (`300/20 chunking` + embeddings) → vectors in
 
 ```bash
 npm ci
-npm run build      # tsc --noEmit
-npm test           # jest synth
+npm run build
+npm test
 npm run synth
 npm run deploy:kb:dev
 npm run seed       # uploads sample docs to s3://<bucket>/docs/
@@ -55,6 +56,8 @@ npm run ingest     # StartIngestionJob + waits for COMPLETE
 npm run smoke      # retrieve + retrieve-and-generate (Nova Micro)
 npm run destroy:kb:dev
 ```
+
+> `aws login` is the command you use if you need to connect to AWS to perform the deployment.
 
 Switch embeddings (both 1024 dims, same index):
 
